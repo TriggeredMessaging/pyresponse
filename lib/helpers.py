@@ -78,6 +78,21 @@ class Helpers:
         list_ = self.api_core.filter_loaded([loaded], None, output_filter)
         return list_[0] if len(list_) else None
 
+    def all_lists(self, output_filter=None):
+        """
+        Get a list of all the (optionally filtered) list records
+        available to the account.
+        ------------------------------------------------
+        @param [output_filter]           - filter for the record, e.g.
+                                           Core.Filters.key_filter(Core.List.NAME)
+                                           will output Core.List.NAME field instead
+                                           of dictionary
+        @return lists                    - a (potentially empty) set of (optionally
+                                           filtered) lists records.
+        """
+        loaded = self.api_core.load_search(Core.Class.CAMPAIGN_LIST, {})
+        filter_ = self.api_core.filter_loaded(loaded, output_filter=output_filter)
+        return filter_
 
 
     def filter_by_name(self, filter_name, output_filter=None):
@@ -128,6 +143,24 @@ class Helpers:
         loaded = self.api_core.load_search(Core.Class.CAMPAIGN_FILTER, {Core.List.ID: list_id})
         filters = self.api_core.filter_loaded(loaded, search_params, output_filter)
         return filters
+
+    def all_messages(self, output_filter=None):
+        """
+        Get a set of (optionally filtered) campaign emails.
+        E.g.
+        self.all_messages(self.Filters.keys_filter({'templateName': True, 'messageName': True, 'amendedDtTm': True}))
+        ->
+        [{'amendedDtTm': 04/10/2014 12:07, 'templateName': XXXXXXX, 'messageName':XXXXXX}]
+        ------------------------------------------------
+        @param [output_filter]           - filter for the record, e.g.
+                                           Core.Filters.key_filter(Core.Filter.ID)
+                                           will ouput Core.Filter.ID field instead of dictionary
+        @return messages                 - a (potentially empty) set of (optionally
+                                           filtered) lists records.
+        """
+        loaded = self.api_core.load_search(Core.Class.CAMPAIGN_EMAIL, {})
+        filter_ = self.api_core.filter_loaded(loaded, output_filter=output_filter)
+        return filter_
 
 
     def message_by_name(self, message_name, output_filter=None):
@@ -263,7 +296,7 @@ class Helpers:
         if message_id is None:
             message = ('None found: message_name=%s' % (message_name))
             raise Core.NoneFoundError(message)
-        schedule_time = datetime.datetime.now() + datetime.timedelta(**scheduling_delay)
+        schedule_time = datetime.datetime.utcnow() + datetime.timedelta(**scheduling_delay)
         schedule_time = schedule_time.strftime('%d/%m/%Y %H:%M')
 
         entity_data = {Core.Scheduling.DELIVERY_TIME: schedule_time,

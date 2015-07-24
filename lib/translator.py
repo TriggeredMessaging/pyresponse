@@ -4,6 +4,7 @@
 
 import base64
 import StringIO
+import htmlentitydefs
 import csv
 import re
 
@@ -51,11 +52,18 @@ class Translator:
             if isinstance(dictionary[key], dict):
                 setattr(value, 'arr', self.ensuds(dictionary[key]))
             elif isinstance(dictionary[key], str) or isinstance(dictionary[key], unicode):
-                escaped = self.x_encode(dictionary[key], 'xmlcharrefreplace')
-                if isinstance(dictionary[key], unicode) and not key.isdigit() and not (key in self.main.encoding_exceptions):
+                escaped = dictionary[key]
+                if key not in self.main.utf_exceptions:
+                    escaped = self.x_encode(escaped, 'xmlcharrefreplace')
+                    if isinstance(dictionary[key], unicode) and not key.isdigit() and not (key in self.main.b64_exceptions):
+                        (key, escaped) = self.base_encode(getattr(pair, 'key'), escaped)
+                        setattr(pair, 'key', key)
+                else:
+                    if isinstance(escaped, unicode):
+                        escaped = escaped.encode('utf-8')
                     (key, escaped) = self.base_encode(getattr(pair, 'key'), escaped)
                     setattr(pair, 'key', key)
-
+                    pass
                 setattr(value, 'str', escaped)
             else:
                 setattr(value, 'str', str(dictionary[key]))
@@ -124,7 +132,9 @@ class Translator:
                 if (self.x_encode(item) in [Core.Person.EMAIL, Core.Person.MOBILE]):
                     continue
                 if item not in strict_allowed_field_names:
-                    message = ('Invalid person record(s): not in set of allowed fields field_name=%s (strict_mode)' % (item))
+                    strict_allowed_keys = [self.x_encode(x) for x in strict_allowed_field_names.keys()]
+                    str_master_list = [self.x_encode(x) for x in master]
+                    message = ('Invalid person record(s): not in set of allowed fields field_name=%s attempted_field_names=%s strict_allowed_field_names=%s (strict_mode)' % (item, str_master_list, strict_allowed_keys))
                     raise Core.InvalidPersonError(message)
 
         csv_string = StringIO.StringIO()
@@ -138,8 +148,19 @@ class Translator:
 
         csv_writer.writerow(dict([(k, k) for k in master]))
 
+        # Case 6518
+        def local_encode(v):
+            if isinstance(v, str):
+                return v
+            if isinstance(v, unicode):
+                return v.encode('utf-8')
+            return str(v)
         for item in input_:
-            csv_writer.writerow(dict([(k, self.x_encode(v).replace('\n', '')) for k, v in item.iteritems()]))
+            csv_writer.writerow(dict([(k, local_encode(v).replace('\n', '')) for k, v in item.iteritems()]))
+            # Case 6518 This fixes utf characters for subscriber uploads.
+            # Special characters do not need to be removed any more
+            # because we do not expect html content to make it this far.
+            # csv_writer.writerow(dict([(k, self.x_encode(v).replace('\n', '')) for k, v in item.iteritems()]))
 
         output = csv_string.getvalue()
         csv_string.close()

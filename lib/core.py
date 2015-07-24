@@ -5,7 +5,6 @@
 from suds.client import Client as Suds
 
 class Core:
-
     api_username = None
     api_password = None
 
@@ -86,6 +85,7 @@ class Core:
 
 
     def __init__(self, main):
+        self.api_main = main
         self.api_client = main.api_client
         self.api_translator = main.api_translator
         self.api_context = None
@@ -144,17 +144,24 @@ class Core:
                                            being returned by the API wrapper
         """
         if self.api_context or (bean_proc is Core.Process.AUTHENTICATE):
-            response = self.api_client.service.handleRequest(self.api_context or self.api_translator.null(),
-                                                             Core.Type.FACADE + '_' + bean_class,
-                                                             bean_proc,
-                                                             self.api_translator.ensuds(entity_data),
-                                                             self.api_translator.ensuds(process_data))
-            if no_response:
-                return {'ok': True}
-            else:
-                result = self.api_translator.desuds(response)
-                result['ok'] = result.get('ok', False)
-                return result
+            try:
+                response = self.api_client.service.handleRequest(self.api_context or self.api_translator.null(),
+                                                                 Core.Type.FACADE + '_' + bean_class,
+                                                                 bean_proc,
+                                                                 self.api_translator.ensuds(entity_data),
+                                                                 self.api_translator.ensuds(process_data))
+                if no_response:
+                    return {'ok': True}
+                else:
+                    result = self.api_translator.desuds(response)
+                    result['ok'] = result.get('ok', False)
+                    return result
+            except Exception as e:
+                if e.message[0] == 404:
+                    message = '404 Not Found: %s %s for %s'
+                    message = message % (bean_class, bean_proc, self.api_main.api_version)
+                    raise Core.Pure360ServerError(message)
+                raise
         else:
             message = ('Not authenticated: api_context=%s for api_username=%s, api_password=%s' %
                        (self.api_context, self.api_username, self.api_password))
@@ -221,9 +228,18 @@ class Core:
             if 'already pending' in response_string:
                 message = ('Already pending: response=%s' % (response_string))
                 raise Core.PendingError(message)
+            if 'running campaign cannot be edited' in response_string:
+                message = ('Busy: %s' % (response_string))
+                raise Core.BusyError(message)
             if 'marked as opted out' in response_string:
                 message = ('Opted out: desired recipient has opted out, response=%s' % (response_string))
                 raise Core.OptedOutError(message)
+            if 'marked as bounced' in response_string:
+                message = ('Bounced: desired recipient bounced, response=%s' % (response_string))
+                raise Core.BouncedError(message)
+            if 'must be set to track links' in response_string:
+                message = ('Link Tracking: links not tracked, response=%s' % (response_string))
+                raise Core.LinkTrackingError(message)
             message = ('Store failed: bean_class=%s, entity_data=%s, response=%s' %
                        (bean_class, entity_data, response_string))
             raise Core.StoreError(message)
@@ -335,6 +351,9 @@ class Core:
                 return dict([(key, candidate.get(key)) for key in keys if key in candidate])
             return filter
 
+    class Pure360ServerError(Exception):
+        pass
+
     class InvalidEmailError(Exception):
         pass
 
@@ -347,6 +366,9 @@ class Core:
     class PendingError(Exception):
         pass
 
+    class BusyError(Exception):
+        pass
+
     class AuthenticationError(Exception):
         pass
 
@@ -354,6 +376,9 @@ class Core:
         pass
 
     class OptedOutError(Exception):
+        pass
+
+    class BouncedError(Exception):
         pass
 
     class CreateError(Exception):
@@ -381,4 +406,7 @@ class Core:
         pass
 
     class AccountLevelError(Exception):
+        pass
+
+    class LinkTrackingError(Exception):
         pass

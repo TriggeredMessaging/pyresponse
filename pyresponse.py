@@ -10,7 +10,7 @@ from suds.client import Client as Suds
 import types
 
 class PureResponseClient(object):
-    version = '1.2.7'
+    version = '1.2.8'
 
     api_client = None
     api_account_level = None
@@ -18,18 +18,20 @@ class PureResponseClient(object):
     api_core = None
     api_translator = None
 
-    encoding_exceptions = [Core.Entity.ID,
-                           Core.Message.ID,
-                           Core.List.ID,
-                           Core.Api.USERNAME,
-                           Core.Api.PASSWORD]
+    b64_exceptions = [Core.Entity.ID,
+                      Core.Message.ID,
+                      Core.List.ID,
+                      Core.Api.USERNAME,
+                      Core.Api.PASSWORD]
+    utf_exceptions = []
 
     class AccountLevel:
         LITE = 10
         PRO = 20
         EXPERT = 40
 
-    def __init__(self, api_version=Core.Api.RPC_LITERAL_UNBRANDED):
+    def __init__(self, api_version=Core.Api.RPC_LITERAL_BRANDED):
+        self.api_version = api_version
         self.api_client = Suds(api_version)
         self.api_translator = Translator(self)
         self.api_core = Core(self)
