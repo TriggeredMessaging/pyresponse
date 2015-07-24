@@ -22,7 +22,7 @@ api = PureResponseClient()
 print '------------------------------------------------'
 print 'Authenticate'
 try:
-    print api.authenticate('tm.system', 'crwkbplf')
+    print api.authenticate('username', 'password')
 except Exception as e:
     print e
 print '------------------------------------------------'
