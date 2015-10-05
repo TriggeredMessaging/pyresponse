@@ -188,7 +188,7 @@ class Helpers:
         return self.api_core.store(Core.Class.CAMPAIGN_EMAIL, entity_data)
 
 
-    def create_list(self, list_name, list_data, notify_uri=None, overwrite_existing=False):
+    def create_list(self, list_name, list_data, notify_uri=None, overwrite_existing=False, email_notification=True):
         """
         Create a contact list, optionally overwriting any existing
         records with the same message name.
@@ -202,6 +202,9 @@ class Helpers:
                                            True / False
         @return result                   - storage result e.g. {beanName: bus_entity_campaign_list}
         """
+        if not email_notification:
+            notify_uri = 'IGNORE'
+
         self.api_core.handle_existing(Core.Class.CAMPAIGN_LIST,
                                       self.list_by_name(list_name),
                                       overwrite_existing)
@@ -273,7 +276,7 @@ class Helpers:
         return self.api_core.store(Core.Class.CAMPAIGN_DELIVERY, entity_data)
 
 
-    def add_person(self, list_name, person, notify_uri=None, strict_mode=True):
+    def add_person(self, list_name, person, notify_uri=None, strict_mode=True, email_notification=True):
         """
         Proxy call to Helpers.add_people for a single person record
         ------------------------------------------------
@@ -282,10 +285,10 @@ class Helpers:
         @param [notify_uri]              - email address to receive notification when finished
         @return result                   - storage result e.g. {beanName: bus_entity_campaign_list}
         """
-        return self.add_people(list_name, [person], notify_uri, strict_mode)
+        return self.add_people(list_name, [person], notify_uri, strict_mode, email_notification=email_notification)
 
 
-    def add_people(self, list_name, people, notify_uri=None, strict_mode=True):
+    def add_people(self, list_name, people, notify_uri=None, strict_mode=True, email_notification=True):
         """
         Add multiple person records to a list
         ------------------------------------------------
@@ -306,6 +309,9 @@ class Helpers:
                 raise Core.NoneFoundError(message)
         else:
             strict_allowed_field_names = None
+
+        if not email_notification:
+            notify_uri = 'IGNORE'
 
         created = self.api_core.create(Core.Class.CAMPAIGN_LIST, {Core.Upload.TYPE: Core.Upload.APPEND})
         entity_data = {Core.List.NAME: list_name,
